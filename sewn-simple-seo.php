@@ -9,7 +9,7 @@
  * Plugin Name:       Sewn In Simple SEO
  * Plugin URI:        https://wordpress.org/plugins/sewn-in-simple-seo/
  * Description:       Adds a very simple, clean interface for controlling SEO items for a website.
- * Version:           2.0.3
+ * Version:           2.0.6
  * Author:            Jupitercow
  * Author URI:        http://Jupitercow.com/
  * Contributor:       Jake Snyder
@@ -74,7 +74,7 @@ class Sewn_Seo
 	{
 		$this->prefix      = 'sewn';
 		$this->plugin_name = strtolower(__CLASS__);
-		$this->version     = '2.0.3';
+		$this->version     = '2.0.6';
 		$this->settings    = array(
 			'add_xml_sitemap'   => false,
 			'post_types'        => array(''),
@@ -118,6 +118,12 @@ class Sewn_Seo
 							'type'          => 'image',
 							'instructions'  => __( 'Used by some social media sites when a user shares this content.', $this->plugin_name ),
 						),
+						array(
+							'label'         => __( 'Open Graph Type', $this->plugin_name ),
+							'name'          => 'meta_type',
+							'type'          => 'text',
+							'instructions'  => __( 'Used by some social media sites when a user shares this content.', $this->plugin_name ),
+						),
 					),
 					'post_types'      => array(),
 					'menu_order'      => 0,
@@ -140,6 +146,7 @@ class Sewn_Seo
 	{
 		add_action( 'plugins_loaded', array($this, 'plugins_loaded') );
 		add_action( 'init',           array($this, 'init') );
+		add_action( 'wp_loaded',      array($this, 'register_field_groups') );
 	}
 
 	/**
@@ -171,8 +178,6 @@ class Sewn_Seo
 
 		add_filter( "{$this->prefix}/seo/add_image_field",  array($this, 'manual_image'), 99 );
 
-		$this->register_field_groups();
-
 		add_filter( 'wp_title',                             array($this, 'wp_title'), 99, 2 );
 		add_action( 'wp_head',                              array($this, 'wp_head'), 1 );
 		add_action( "{$this->prefix}/seo/description",      array($this, 'meta_description') );
@@ -193,6 +198,11 @@ class Sewn_Seo
 	 */
 	public function post_types()
 	{
+		$this->settings['post_types'] = get_post_types( array(
+			'public' => true
+		) );
+		unset($this->settings['post_types']['attachment']);
+
 		return apply_filters( "{$this->prefix}/seo/post_types", apply_filters( "{$this->plugin_name}/post_types", $this->settings['post_types'] ) );
 	}
 
@@ -204,7 +214,7 @@ class Sewn_Seo
 	 */
 	public function admin_enqueue_scripts( $hook )
 	{
-		if ( ! in_array($hook, array('post.php','post-new.php')) || ! in_array($GLOBALS['post_type'], $this->post_types()) ) { return; }
+		if ( ! in_array($hook, array('post.php','post-new.php')) || ! in_array($GLOBALS['post_type'], $this->post_types()) ) { return; } # || )
 
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'assets/js/sewn-simple-seo-admin.js', array( 'jquery' ), $this->version, false );
 	}
@@ -309,7 +319,6 @@ class Sewn_Seo
 	 */
 	public function meta_description()
 	{
-		$post_id = $GLOBALS['post']->ID;
 		$content = '';
 
 		if ( is_home() )
@@ -330,9 +339,9 @@ class Sewn_Seo
 		}
 		else
 		{
-			if (! empty($post_id) && $meta = get_post_meta($post_id, 'meta_description', true) ) {
+			if (! empty($GLOBALS['post']->ID) && $meta = get_post_meta($GLOBALS['post']->ID, 'meta_description', true) ) {
 				$content = $meta;
-			} elseif (! empty($post_id) && $meta = get_post_field('post_content', $post_id) ) {
+			} elseif (! empty($GLOBALS['post']->ID) && $meta = get_post_field('post_content', $GLOBALS['post']->ID) ) {
 				$content = wp_trim_words($meta, '30', '');
 			}
 		}
@@ -350,7 +359,6 @@ class Sewn_Seo
 	 */
 	public function meta_keywords()
 	{
-		$post_id = $GLOBALS['post']->ID;
 		$content = '';
 
 		if ( apply_filters( "{$this->prefix}/seo/add_keywords", false ) )
@@ -370,7 +378,7 @@ class Sewn_Seo
 			}
 			else
 			{
-				if (! empty($post_id) && $meta = get_post_meta($post_id, 'meta_keywords', true) ) {
+				if (! empty($GLOBALS['post']->ID) && $meta = get_post_meta($GLOBALS['post']->ID, 'meta_keywords', true) ) {
 					$content = $meta;
 				}
 			}
@@ -422,9 +430,8 @@ class Sewn_Seo
 	 */
 	public function meta_og_title()
 	{
-		$post_id = $GLOBALS['post']->ID;
 		$content = '';
-		if (! empty($post_id) && $meta = get_post_meta($post_id, 'meta_title', true) ) {
+		if (! empty($GLOBALS['post']->ID) && $meta = get_post_meta($GLOBALS['post']->ID, 'meta_title', true) ) {
 			$content = $meta;
 		} else {
 			$content = get_the_title();
@@ -443,15 +450,14 @@ class Sewn_Seo
 	 */
 	public function meta_og_image()
 	{
-		$post_id = $GLOBALS['post']->ID;
 		$content = '';
 		if ( is_home() && $meta = get_option('meta_image') ) {
 			$content = $meta;
-		} elseif (! empty($post_id) && $meta = apply_filters( "{$this->prefix}/seo/add_image_field", $post_id ) ) {
+		} elseif (! empty($GLOBALS['post']->ID) && $meta = apply_filters( "{$this->prefix}/seo/add_image_field", $GLOBALS['post']->ID ) ) {
 			$content = $meta;
-		} elseif (! empty($post_id) && $meta = get_post_meta($post_id, 'meta_image', true) ) {
+		} elseif (! empty($GLOBALS['post']->ID) && $meta = get_post_meta($GLOBALS['post']->ID, 'meta_image', true) ) {
 			$content = $meta;
-		} elseif (! empty($post_id) && $meta_array = wp_get_attachment_image_src(get_post_thumbnail_id($post_id), 'full') ) {
+		} elseif (! empty($GLOBALS['post']->ID) && $meta_array = wp_get_attachment_image_src(get_post_thumbnail_id($GLOBALS['post']->ID), 'full') ) {
 			if (! empty($meta_array[0]) ) {
 				$content = $meta_array[0];
 			}
@@ -470,8 +476,15 @@ class Sewn_Seo
 	 */
 	public function meta_og_type()
 	{
-		if ( $meta = get_option('meta_type') ) {
-			printf( $this->settings['meta_fields']['type'] . "\n", $meta );
+		$content = '';
+		if (! empty($GLOBALS['post']->ID) && $meta = get_post_meta($GLOBALS['post']->ID, 'meta_type', true) ) {
+			$content = $meta;
+		} elseif ( $meta = get_option('meta_type') ) {
+			$content = $meta;
+		}
+
+		if ( $content ) {
+			printf( $this->settings['meta_fields']['type'] . "\n", $content );
 		}
 	}
 
@@ -543,7 +556,11 @@ class Sewn_Seo
 			if ( empty($field) ) { continue; }
 
 			// Remove keywords or open graph image field unless asked for
-			if ( ('meta_keywords' == $field['name'] && ! apply_filters( "{$this->prefix}/seo/add_keywords", false )) || ('meta_image' == $field['name'] && ! apply_filters( "{$this->prefix}/seo/add_image_field", false )) ) {
+			if (
+				('meta_keywords' == $field['name'] && ! apply_filters( "{$this->prefix}/seo/add_keywords", false )) || 
+				('meta_type' == $field['name'] && ! apply_filters( "{$this->prefix}/seo/add_type", false )) || 
+				('meta_image' == $field['name'] && ! apply_filters( "{$this->prefix}/seo/add_image", false )) 
+			) {
 				unset($this->settings['field_groups'][0]['fields'][$key]);
 				continue;
 			}

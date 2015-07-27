@@ -4,7 +4,7 @@ Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=jacob
 Tags: seo,search engine,meta data
 Requires at least: 3.6.1
 Tested up to: 4.1
-Stable tag: 2.0.3
+Stable tag: 2.0.5
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,6 +12,8 @@ A very simple SEO interface without caracatures and cruft.
 
 
 == Description ==
+
+= 2.0.6 changed default post types used from only 'post' and 'page' to ALL public post types except "attachment". This is a cleaner approach, but may require customization. Ther is more info on customization below. =
 
 Adds a fast, simple interface for adding SEO meta data to pags and posts. Designed to remove all of the extra stuff that you just won't use. It is made to be straight forward for users with not confusing extras and no annoying ads. So you can enjoy using it and feel comfortable putting it before a client.
 
@@ -121,6 +123,19 @@ Works with the [Sewn In XML Sitemap](https://github.com/jupitercow/sewn-in-xml-s
 
 
 == Changelog ==
+
+= 2.0.6 - 2015-07-27 =
+
+*   Updated the default post types to ALL public post types except 'attachment'.
+
+= 2.0.5 - 2015-03-09 =
+
+*   Small update to make sure admin javascript loads.
+
+= 2.0.4 - 2015-03-08 =
+
+*   Fixed issues with global post on 404s, etc.
+*   Added support for Open Graph type field.
 
 = 2.0.3 - 2015-02-13 =
 
